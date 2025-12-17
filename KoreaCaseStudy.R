@@ -19,9 +19,9 @@ library(ggrepel)
 library(RColorBrewer)
 library(purrr)
 
-library(here)
-
 # set directory
+setwd("/Users/daljaepark/Library/CloudStorage/OneDrive-개인/논문투고/2025 Bootstrap resampling 리부트/마한백제데이터")
+
 
 #########################################################################
 ##################  Figure 9 and 10 (a): SPD comparison 
@@ -34,8 +34,20 @@ library(here)
 # Load published radiocarbon dates.
 # Load one of the datasets: either "Yeongsanriver.csv" or "Geumriver.csv",
 # depending on the target river basin.
-#sampled_data <- read.csv("C14_data_Yeongsanriver.csv", , fileEncoding="cp949") 
-sampled_data <- read.csv(here("Data", "C14_data_Geumriver.csv"), fileEncoding = "cp949")
+sampled_data <- read.csv("C14_data_Yeongsanriver.csv", , fileEncoding="cp949") 
+sampled_data <- read.csv("C14_data_Geumriver.csv", , fileEncoding="cp949") 
+
+
+house_counts <- sampled_data %>%
+  distinct(SiteCode, total_houses)
+print(house_counts)
+
+
+rad_count <- sampled_data %>%
+  distinct(SiteCode, count)
+print(rad_count)
+
+
 
 # calculate weights for each settlement
 weights <- sampled_data %>%
@@ -169,12 +181,12 @@ normalize_spd <- function(spd_df) {
 sampled_spd_normalized <- normalize_spd(sampled_spd_total_by_settlement %>%
                                           group_by(calBP) %>%
                                           summarise(PrDens = sum(PrDens), .groups = 'drop') %>%
-                                          mutate(Dataset = "Published"))
+                                          mutate(Dataset = "Unrescaled original"))
 
 resampled_spd_normalized <- normalize_spd(resampled_spd_total_by_settlement %>%
                                             group_by(calBP) %>%
                                             summarise(PrDens = sum(PrDens), .groups = 'drop') %>%
-                                            mutate(Dataset = "Bootstrap"))
+                                            mutate(Dataset = "Bootstrapped"))
 
 weighted_spd_normalized <- normalize_spd(weighted_spd_total_by_settlement %>%
                                            group_by(calBP) %>%
@@ -188,15 +200,15 @@ weighted_spd_normalized <- normalize_spd(weighted_spd_total_by_settlement %>%
 #------------------------------------------------------------------------
 
 total_spd_normalized <- bind_rows(sampled_spd_normalized, resampled_spd_normalized, weighted_spd_normalized)
-spd_colors <- c("Published" = "#ffbb6f", "Bootstrap" = "#999999", "Weighted" = "#5e4c5f")
-total_spd_normalized$Dataset <- factor(total_spd_normalized$Dataset, levels = c("Published", "Bootstrap", "Weighted"))
+spd_colors <- c("Unrescaled original" = "#ffbb6f", "Bootstrapped" = "#999999", "Weighted" = "#5e4c5f")
+total_spd_normalized$Dataset <- factor(total_spd_normalized$Dataset, levels = c("Unrescaled original", "Bootstrapped", "Weighted"))
 
 plot_total_spd_normalized <- ggplot(total_spd_normalized, aes(x = calBP, y = PrDens, color = Dataset, linetype = Dataset)) +
   geom_line(linewidth = 1) +  
   scale_color_manual(values = spd_colors) +
-  scale_linetype_manual(values = c("Published" = "solid", "Bootstrap" = "dashed", "Weighted" = "dotdash")) +
+  scale_linetype_manual(values = c("Unrescaled original" = "solid", "Bootstrapped" = "dashed", "Weighted" = "dotdash")) +
   scale_x_reverse(limits = c(2200, 1400)) +  
-  labs(title = "Total SPD Comparison (Normalized)",
+  labs(title = "Total SPD Comparison",
        x = "cal BP", y = "Normalized SPD") +
   theme_minimal(base_family = "noto") +
   theme(
@@ -204,16 +216,16 @@ plot_total_spd_normalized <- ggplot(total_spd_normalized, aes(x = calBP, y = PrD
     panel.background = element_rect(fill = "white", color = NA),  
     plot.background = element_rect(fill = "white", color = NA),  
     legend.position = "top",  # ✅ Move legend to the top
-    legend.text = element_text(size = 13, face = "bold"),  
+    legend.text = element_text(size = 12, face = "bold"),  
     legend.title = element_blank(), 
-    legend.key.width = unit(1, "cm"),
-    plot.title = element_text(size = 17, face = "bold", hjust = 0.5),  
-    axis.text = element_text(size = 13, face = "bold"), 
-    axis.title = element_text(size = 13, face = "bold")  
+    legend.key.width = unit(1.5, "cm"),
+    plot.title = element_text(size = 13, face = "bold", hjust = 0.5),  
+    axis.text = element_text(size = 11, face = "bold"), 
+    axis.title = element_text(size = 11, face = "bold")  
   ) 
 
 print(plot_total_spd_normalized)
-ggsave("Figure10a.png", plot_total_spd_normalized, width = 12, height = 4, dpi = 300)
+ggsave("Figure9a.png", plot_total_spd_normalized, width = 12, height = 4, dpi = 300)
 
 
 
@@ -252,11 +264,10 @@ normalize_preserve_shape <- function(all_spd_df) {
 
 # Combine all SPD datasets
 all_spd_df <- bind_rows(
-  sampled_spd_total_by_settlement %>% mutate(Dataset = "Published"),
-  resampled_spd_total_by_settlement %>% mutate(Dataset = "Bootstrap"),
+  sampled_spd_total_by_settlement %>% mutate(Dataset = "Unrescaled original"),
+  resampled_spd_total_by_settlement %>% mutate(Dataset = "Bootstrapped"),
   weighted_spd_total_by_settlement %>% mutate(Dataset = "Weighted")
 )
-
 
 
 # ✅ Normalize the SPDs
@@ -264,15 +275,18 @@ normalized_spd_df <- normalize_preserve_shape(all_spd_df)
 normalized_spd_df$SiteCode <- factor(normalized_spd_df$SiteCode)  
 
 
-
 #------------------------------------------------------------------------
 #------------  step 2. plot SPD with labels
 #------------------------------------------------------------------------
 
-# add labels
+# set color palette
 n_settlements <- length(unique(normalized_spd_df$SiteCode))
 distinct_colors <- pal_d3("category20")(n_settlements)
 
+
+# Choose ONE of the two plotting functions below (SiteCode vs. SiteID labels)
+
+#----- 1) plot with label (SiteCode version)
 plot_normalized_spds <- function(dataset_name) {
   df_filtered <- normalized_spd_df %>%
     filter(Dataset == dataset_name)
@@ -318,9 +332,72 @@ plot_normalized_spds <- function(dataset_name) {
 }
 
 
+#----- 2) plot with label (SiteID version)
+# Assign IDs 1, 2, 3... in alphanumeric order
+site_lookup <- normalized_spd_df %>%
+  distinct(SiteCode) %>%
+  arrange(SiteCode) %>%            
+  mutate(SiteID = row_number())
+
+normalized_spd_df <- normalized_spd_df %>%
+  left_join(site_lookup, by = "SiteCode") %>%
+  mutate(SiteID_f = factor(SiteID, levels = sort(unique(SiteID))))
+
+
+site_lookup %>% arrange(SiteID) %>% print(n = Inf)
+
+plot_normalized_spds <- function(dataset_name) {
+  df_filtered <- normalized_spd_df %>%
+    filter(Dataset == dataset_name)
+  
+  label_positions <- df_filtered %>%
+    group_by(SiteID_f) %>%
+    summarise(
+      calBP = calBP[which.max(Adjusted_PrDens)],
+      Adjusted_PrDens = max(Adjusted_PrDens),
+      .groups = "drop"
+    )
+  
+  ggplot(df_filtered, aes(x = calBP, y = Adjusted_PrDens,
+                          fill = SiteID_f, color = SiteID_f)) +
+    geom_area(alpha = 0.4, position = "identity") +
+    geom_line(linewidth = 1.5) +
+    scale_fill_manual(name = "Settlement", values = distinct_colors) +
+    scale_color_manual(name = "Settlement", values = distinct_colors) +
+    labs(title = paste(dataset_name),
+         x = "cal BP", y = "Probability Density") +
+    scale_x_reverse(limits = c(2200, 1400)) +
+    scale_y_continuous(breaks = c(0, 0.001), limits = c(0, NA))+ 
+    theme_minimal() +
+    theme(text = element_text(family = "noto"),
+          legend.position = "bottom",
+          legend.direction = "horizontal",
+          legend.text = element_text(size = 30, face = "bold"),
+          legend.title = element_text(size = 30, face = "bold"),
+          plot.title = element_text(size = 30, face = "bold", hjust = 0.5),
+          axis.text = element_text(size = 20, face = "bold"),
+          axis.title.y = element_text(size = 25, face = "bold", margin = margin(r = 0)),
+          axis.title.x = element_text(size = 25, face = "bold")
+    ) 
+  +
+    geom_text_repel(
+      data = label_positions,
+      aes(x = calBP, y = Adjusted_PrDens, label = SiteID_f),
+      size = 11, family = "noto", fontface = "bold",
+      box.padding = 0.5, point.padding = 0.5,
+      segment.color = "black",
+      segment.size = 1,
+      max.overlaps = Inf,
+      force = 20
+    )
+}
+
+
+
+
 # ✅ Create plots
-plot_sampled <- plot_normalized_spds("Published")
-plot_resampled <- plot_normalized_spds("Bootstrap")
+plot_sampled <- plot_normalized_spds("Unrescaled original")
+plot_resampled <- plot_normalized_spds("Bootstrapped")
 plot_weighted <- plot_normalized_spds("Weighted")
 
 
@@ -334,8 +411,9 @@ combined_normalized_plot <- plot_sampled + plot_resampled + plot_weighted +
         legend.key.width = unit(1.5, "cm")) &
   guides(fill = guide_legend(nrow = 2), color = guide_legend(nrow = 2))
 
-ggsave("Figures10b.png", combined_normalized_plot, width = 30, height = 12, dpi = 300, bg = "white")
-
+print(combined_normalized_plot)
+ggsave("Figure10b.png", combined_normalized_plot, width = 30, height = 12, dpi = 300, bg = "white")
+#The figures in the manuscript were edited using Adobe Illustrator.
 
 
 #########################################################################
@@ -376,10 +454,11 @@ st_crs(map_korea_total) <- st_crs(5179)  # Korea's Unified Coordinate System
 map_korea_total$SIG_KOR_NM <- enc2utf8(map_korea_total$SIG_KOR_NM)
 
 
-# filtering region: Choose Yeongsan river basin or Geum river basin
+
+###### filtering region: Choose Yeongsan river basin or Geum river basin
 
 # 1) Yeongsan river basin
-#map_korea_filtered <- subset(map_korea_total, substr(SIG_CD, 1, 2) == "29" | SIG_CD == "46710")
+map_korea_filtered <- subset(map_korea_total, substr(SIG_CD, 1, 2) == "29" | SIG_CD == "46710")
 
 # 2) Geum river basin 
 sig_cd_values <- c("43110", "36110", "43111", "43112", "43113","43114",  "30140", "30170", "30200","30230", "43710") 
@@ -450,7 +529,7 @@ stkde_sampled <- stkde( x = calibrated_sampled, coords = st_coordinates(sampled_
 
 
 # Define the file path for the output image
-output_file <- "Figure 10c_published data.png"
+output_file <- "Figure 10c_unrescaled original data 2000-1500.png"
 png(filename = output_file, width = 6000, height = 1000, res = 500)
 par(mfrow = c(1, 6), mar = c(0.5, 0, 2, 0.5), oma = c(0, 0, 3, 0), font = 2)
 #plot(stkde_sampled, 2100, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 2100")
@@ -460,7 +539,7 @@ plot(stkde_sampled, 1800, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.la
 plot(stkde_sampled, 1700, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1700")
 plot(stkde_sampled, 1600, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1600")
 plot(stkde_sampled, 1500, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1500")
-mtext("KDE - Published data", outer = TRUE, cex = 1.2, font = 2, line = 1)
+mtext("Unrescaled original", outer = TRUE, cex = 1.2, font = 2, line = 1)
 dev.off()
 
 
@@ -476,18 +555,17 @@ stkde_resampled <- stkde( x = calibrated_resampled, coords = st_coordinates(resa
 
 
 # Plot the density for each focal year
-#focal_years <- seq(2100, 1500, -100)
-output_file_resampled <- "Figure 10c_Bootstrap data.png"
+output_file_resampled <- "Figure 10c_Bootstrapped data 2100-1600.png"
 png(filename = output_file_resampled, width = 6000, height = 1000, res = 500)
 par(mfrow = c(1, 6), mar = c(0.5, 0, 2, 0.5), oma = c(0, 0, 3, 0), font = 2)
-#plot(stkde_resampled, 2100, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 2100")
+plot(stkde_resampled, 2100, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 2100")
 plot(stkde_resampled, 2000, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 2000")
 plot(stkde_resampled, 1900, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1900")
 plot(stkde_resampled, 1800, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1800")
 plot(stkde_resampled, 1700, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1700")
 plot(stkde_resampled, 1600, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1600")
-plot(stkde_resampled, 1500, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1500")
-mtext("KDE - Bootstrap data", outer = TRUE, cex = 1.3, font = 2, line = 1)
+#plot(stkde_resampled, 1500, type = "focal", cex.main = 1.8, cex.axis = 1.2, cex.lab = 1.2, main = "Year 1500")
+mtext("Bootstrapped", outer = TRUE, cex = 1.3, font = 2, line = 1)
 dev.off()
 
 
