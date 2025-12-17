@@ -499,7 +499,7 @@ metrics_long_2 <- metrics_by_settlement_2 %>%
     Metric = "RMSE",  
     Dataset_Type = factor(Dataset_Type,
                           levels = c("Sampled", "WeightedSampled", "Resampled30"),
-                          labels = c("Random Sample", "Weighted", "Bootstrap"))
+                          labels = c("Random Sample", "Weighted", "Bootstrapped"))
   )
 
 # Get unique combinations of Settlement_Dist, BP_Dist, and Sampling_Pct
@@ -703,7 +703,7 @@ metrics_long_combined_2 <- metrics_combined_2 %>%
     Metric = "RMSE",
     Dataset_Type = factor(Dataset_Type,
                           levels = c("Sampled", "WeightedSampled", "Resampled30"),
-                          labels = c("Random Sample", "Weighted", "Bootstrap"))
+                          labels = c("Random Sample", "Weighted", "Bootstrapped"))
   )
 
 
@@ -1022,7 +1022,7 @@ create_spd_comparison_plots_facets <- function(final_data_2) {
   other_data <- other_data %>%
     mutate(Dataset = recode(Dataset,
                             "Sampled" = "Random Sample",
-                            "Resampled30" = "Bootstrap",
+                            "Resampled30" = "Bootstrapped",
                             "Weighted Sampled" = "Weighted"))
   
   original_data <- original_data %>%
@@ -1046,7 +1046,7 @@ create_spd_comparison_plots_facets <- function(final_data_2) {
         facet_wrap(~ Combined_Label, ncol = 2) +
     scale_x_reverse(limits = c(2500, 1300),
                     breaks = seq(2500, 1300, -200)) +
-    scale_color_bmj(limits = c("Random Sample", "Bootstrap", "Weighted")) +
+    scale_color_bmj(limits = c("Random Sample",  "Weighted",  "Bootstrapped")) +
     scale_fill_manual(values = c("Hypothetical Population" = "azure4"))+
     guides(
       fill = guide_legend(order = 1, override.aes = list(alpha = 1)),
@@ -1794,7 +1794,7 @@ create_combined_comparison_plots_wide(agg_data_2)
 
 
 
-############ STEP 5 (Figure 5a): rolling mean SPDs by settlement###############
+############ STEP 5 (Figure 5a&b): rolling mean SPDs by settlement###############
 guides(
   fill = guide_legend(nrow = 1),
   color = guide_legend(nrow = 1)
@@ -1848,7 +1848,7 @@ create_settlement_plot_from_file_smooth <- function(seed, settlement_dist, bp_di
                  "Original" = "Hypothetical Population",
                  "Sampled" = "Random Sample",
                  "Weighted Sampled" = "Weighted",
-                 "Resampled30" = "Bootstrap"
+                 "Resampled30" = "Bootstrapped"
                )))+
     scale_fill_manual(name = "Settlement", values = distinct_colors) +
     scale_color_manual(name = "Settlement", values = distinct_colors) +
@@ -1900,16 +1900,21 @@ create_settlement_plot_from_file_smooth <- function(seed, settlement_dist, bp_di
 
 
 # Create plot for only one specific combination
-plot <- create_settlement_plot_from_file_smooth(
+plot5a <- create_settlement_plot_from_file_smooth(
   seed = 10,
   settlement_dist = "power_law",
   bp_dist = "normal",
   file_path= ""
 )
 
+plot5b <- create_settlement_plot_from_file_smooth(
+  seed = 4,
+  settlement_dist = "power_law",
+  bp_dist = "skewed",
+  file_path= ""
+)
 
-
-# Process multiple seeds
+ # Process multiple seeds
 seeds <- c(1:50)
 for(seed in seeds) {
   plot <- create_settlement_plot_from_file_smooth(

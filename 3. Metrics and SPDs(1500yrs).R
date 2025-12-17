@@ -486,8 +486,8 @@ metrics_long_1 <- metrics_by_settlement_1 %>%
   mutate(
     Metric = "RMSE",  
     Dataset_Type = factor(Dataset_Type,
-                          levels = c("Sampled", "WeightedSampled", "Resampled30"),
-                          labels = c("Random Sample", "Weighted", "Bootstrap"))
+                          levels = c("Sampled", "Weighted", "Resampled30"),
+                          labels = c("Random Sample", "Weighted", "Bootstrapped"))
   )
 
 # Get unique combinations of Settlement_Dist, BP_Dist, and Sampling_Pct
@@ -692,7 +692,7 @@ metrics_long_combined_1 <- metrics_combined_1 %>%
     Metric = "RMSE",  # Add this column since we're filtering by it in the plot
     Dataset_Type = factor(Dataset_Type,
                           levels = c("Sampled", "WeightedSampled", "Resampled30"),
-                          labels = c("Random Sample", "Weighted", "Bootstrap"))
+                          labels = c("Random Sample", "Weighted", "Bootstrapped"))
   )
 
 
@@ -781,7 +781,6 @@ create_faceted_comparison_plots <- function(metrics_long_combined_1) {
     scale_fill_bmj() +
     scale_x_discrete(limits = c("20", "30", "40"))
   
-  # Save plots with adjusted dimensions
   plot_width <- 12
   plot_height <- 8
   
@@ -790,11 +789,9 @@ create_faceted_comparison_plots <- function(metrics_long_combined_1) {
          width = plot_width, 
          height = plot_height)
   
-  # Return the plots in case you want to use them further
   return(list(RMSE = p_RMSE_faceted))
 }
 
-# Usage:
 faceted_plots <- create_faceted_comparison_plots(metrics_long_combined_1)
 
 
@@ -1005,7 +1002,7 @@ create_spd_comparison_plots_facets <- function(final_data_1) {
     arrange(calBP, .by_group = TRUE) %>%
     mutate(
       plot_density_smooth =
-        zoo::rollmean(plot_density, k = 100, fill = NA, align = "center"),
+        zoo::rollmean(plot_density, k = 50, fill = NA, align = "center"),
       plot_density_smooth =
         plot_density_smooth /
         sum(plot_density_smooth, na.rm = TRUE) * sum(plot_density)
@@ -1019,7 +1016,7 @@ create_spd_comparison_plots_facets <- function(final_data_1) {
   other_data <- other_data %>%
     mutate(Dataset = recode(Dataset,
                             "Sampled" = "Random Sample",
-                            "Resampled30" = "Bootstrap",
+                            "Resampled30" = "Bootstrapped",
                             "Weighted Sampled" = "Weighted"))
   
   original_data <- original_data %>%
@@ -1046,7 +1043,7 @@ create_spd_comparison_plots_facets <- function(final_data_1) {
                     breaks = seq(5500, 3000, -200))+
 
     
-    scale_color_bmj(limits = c("Random Sample", "Bootstrap", "Weighted")) +
+    scale_color_bmj(limits = c("Random Sample", "Weighted",  "Bootstrapped")) +
     scale_fill_manual(values = c("Hypothetical Population" = "azure4"))+
     guides(
       fill = guide_legend(order = 1, override.aes = list(alpha = 1)),
@@ -1080,7 +1077,7 @@ create_spd_comparison_plots_facets <- function(final_data_1) {
         
       )
   # --- Save plot
-  ggsave("SPD_Comparison_Faceted_1500_RM100.png", p,
+  ggsave("SPD_Comparison_Faceted_1500_RM50.png", p,
          width = 35, height = 25, dpi = 300)
   
   return(p)
@@ -2022,7 +2019,7 @@ create_combined_comparison_plots_wide(agg_data_1)
 
 
 
-############ STEP 5 (Figure 5b): rolling mean SPDs by settlement###############
+############ STEP 5 (Figure 6a&b): rolling mean SPDs by settlement###############
 guides(
   fill = guide_legend(nrow = 1),
   color = guide_legend(nrow = 1)
@@ -2075,7 +2072,7 @@ create_settlement_plot_from_file_smooth_RM50 <- function(seed, settlement_dist, 
                  "Original" = "Hypothetical Population",
                  "Sampled" = "Random Sample",
                  "Weighted Sampled" = "Weighted",
-                 "Resampled30" = "Bootstrap"
+                 "Resampled30" = "Bootstrapped"
                )))+
     scale_fill_manual(name = "Settlement", values = distinct_colors) +
     scale_color_manual(name = "Settlement", values = distinct_colors) +
@@ -2129,13 +2126,22 @@ create_settlement_plot_from_file_smooth_RM50 <- function(seed, settlement_dist, 
 
 
 
-# Create plot for specific combination
-plot <- create_settlement_plot_from_file_smooth_RM50(
+# Create plot for specific combination(Figure 6a)
+plot6a <- create_settlement_plot_from_file_smooth_RM50(
   seed = 45,
   settlement_dist = "power_law",
   bp_dist = "uniform",
   file_path= ""
 )
+
+# Create plot for specific combination(Figure 6a)
+plot6b <- create_settlement_plot_from_file_smooth_RM50(
+  seed = 50,
+  settlement_dist = "power_law",
+  bp_dist = "normal",
+  file_path= ""
+)
+
 
 
 # Process multiple seeds
